@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Command Center</title>
+    <style>
+        * { box-sizing: border-box; } /* Prevents padding from breaking the width/height */
+        
+        body { 
+            background: #0b0e14; 
+            color: white; 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            height: 100vh; /* Exactly 100% of the screen height */
+            width: 100vw;  /* Exactly 100% of the screen width */
+            overflow: hidden; /* Stops the main page from scrolling */
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px; 
+        }        
+        
+        .section { 
+            flex: 1; 
+            overflow-y: auto; 
+            position: relative; 
+        }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
+        
+        /* Headers & Buttons */
+        .header-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px solid #30363d; 
+            padding-bottom: 10px; 
+            margin-bottom: 15px;
+        }
+        
+        h2 { color: #58a6ff; font-weight: normal; font-size: 1.5rem; margin: 0; }
+        .btn-group { display: flex; gap: 10px; }
+        
+        .icon-btn { 
+            background: none; 
+            border: 1px solid #30363d; 
+            color: #8b949e; 
+            cursor: pointer; 
+            border-radius: 6px; 
+            padding: 5px 10px; 
+            transition: 0.2s; 
+            font-size: 1rem; 
+        }
+        
+        .icon-btn:hover { background: #30363d; color: white; }
+        
+        /* Cards */
+        .card { 
+            background: #161b22; 
+            padding: 15px; 
+            margin-bottom: 12px; 
+            border-radius: 8px; 
+            border-left: 4px solid; 
+            display: flex; 
+            align-items: center;
+        }
+        
+        .task-card { border-left-color: #3fb950; }
+        .cal-card { border-left-color: #58a6ff; flex-direction: column; align-items: flex-start; }
+        .title { font-size: 1.2rem; margin-bottom: 3px; }
+        .time { color: #8b949e; font-size: 0.9rem; }
+        
+        .task-checkbox { 
+            width: 22px; 
+            height: 22px; 
+            border: 2px solid #8b949e; 
+            border-radius: 50%; 
+            margin-right: 15px; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            flex-shrink: 0;
+        }
+        
+        .task-checkbox:hover { background: #3fb950; border-color: #3fb950; }
+
+        /* Modal Styles */
+        #taskModal { 
+            display: none; 
+            position: absolute; 
+            top: 50px; 
+            right: 0; 
+            background: #161b22; 
+            border: 1px solid #30363d; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
+            z-index: 100; 
+            width: 300px;
+            max-width: 90vw; /* Responsive constraint */
+        }
+        
+        .input-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 5px; }
+        .input-group label { color: #8b949e; font-size: 0.85rem; }
+        
+        input, select { 
+            background: #0b0e14; 
+            border: 1px solid #30363d; 
+            color: white; 
+            padding: 8px; 
+            border-radius: 4px; 
+            font-family: inherit; 
+        }
+        
+        .submit-btn { 
+            background: #238636; 
+            color: white; 
+            border: none; 
+            padding: 8px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            width: 100%; 
+            font-weight: bold;
+        }
+        
+        .submit-btn:hover { background: #2ea043; }
+
+        /* Mini Calendar Grid */
+        #calendarView { display: none; background: #161b22; border-radius: 8px; padding: 15px; }
+        .cal-header { display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+        .cal-day-name { color: #8b949e; font-size: 0.8rem; margin-bottom: 5px;}
+        .cal-day { padding: 10px; border-radius: 4px; background: #0b0e14; font-size: 0.9rem; }
+        .has-event { border-bottom: 3px solid #58a6ff; font-weight: bold;}
+        .today { background: #30363d; color: #58a6ff; }
+    </style>
+</head>
+<body>
+
+    <div class="section">
+        <div class="header-row">
+            <h2>Active Tasks</h2>
+            <div class="btn-group">
+                <button class="icon-btn" onclick="location.reload()">↻</button>
+                <button class="icon-btn" onclick="toggleModal()" style="color: #3fb950; border-color: #3fb950;">+ Add</button>
+            </div>
+        </div>
+
+        <div id="taskModal">
+            <div class="input-group">
+                <label>Task Name</label>
+                <input type="text" id="taskTitle" placeholder="What needs to be done?">
+            </div>
+            <div class="input-group">
+                <label>Due Date (Optional)</label>
+                <input type="date" id="taskDate">
+            </div>
+            <div class="input-group">
+                <label>Repeat (Optional)</label>
+                <select id="taskRepeat">
+                    <option value="none">Does not repeat</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                </select>
+            </div>
+            <button class="submit-btn" onclick="submitTask()">Save Task</button>
+        </div>
+
+        <div id="taskList">
+            {% for task in tasks %}
+            <div class="card task-card" id="task-{{ task.id }}">
+                <div class="task-checkbox" onclick="completeTask('{{ task.list_id }}', '{{ task.id }}')"></div>
+                <div class="title" style="margin: 0;">{{ task.title }}</div>
+            </div>
+            {% else %}
+            <p style="color: #8b949e;">All caught up!</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="header-row">
+            <h2>Upcoming Schedule</h2>
+            <div class="btn-group">
+                <button class="icon-btn" onclick="location.reload()">↻</button>
+                <button class="icon-btn" onclick="toggleView()">📅 View</button>
+            </div>
+        </div>
+
+        <div id="agendaView">
+            {% for event in events %}
+            <div class="card cal-card">
+                <div class="title">{{ event.summary }}</div>
+                <div class="time">{{ event.start.strftime('%a, %b %d • %I:%M %p') }}</div>
+            </div>
+            {% else %}
+            <p style="color: #8b949e;">No upcoming events.</p>
+            {% endfor %}
+        </div>
+
+        <div id="calendarView">
+            <div class="cal-header">
+                <span id="monthYear"></span>
+            </div>
+            <div class="cal-grid" id="calGrid">
+                <div class="cal-day-name">Sun</div><div class="cal-day-name">Mon</div><div class="cal-day-name">Tue</div>
+                <div class="cal-day-name">Wed</div><div class="cal-day-name">Thu</div><div class="cal-day-name">Fri</div><div class="cal-day-name">Sat</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Modal & Task Logic ---
+        function toggleModal() {
+            const modal = document.getElementById('taskModal');
+            modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function submitTask() {
+            const btn = document.querySelector('.submit-btn');
+            const titleInput = document.getElementById('taskTitle').value;
+            
+            if (!titleInput.trim()) return; // Prevent empty submission
+
+            btn.innerText = "Saving...";
+            
+            fetch('/add_task', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: titleInput,
+                    dueDate: document.getElementById('taskDate').value,
+                    recurrence: document.getElementById('taskRepeat').value
+                })
+            })
+            .then(() => location.reload())
+            .catch(err => {
+                console.error("Error saving task:", err);
+                btn.innerText = "Save Task"; // Revert button on failure
+            });
+        }
+
+        function completeTask(listId, taskId) {
+            const card = document.getElementById('task-' + taskId);
+            if (!card) return;
+            
+            card.style.opacity = '0.4';
+            card.style.pointerEvents = 'none'; // Prevent double clicking
+            
+            fetch(`/complete/${listId}/${taskId}`, { method: 'POST' })
+                .then(() => { 
+                    card.style.display = 'none'; 
+                })
+                .catch(err => {
+                    console.error("Error completing task:", err);
+                    card.style.opacity = '1';
+                    card.style.pointerEvents = 'auto'; // Revert on failure
+                });
+        }
+
+        // --- Calendar Logic ---
+        function toggleView() {
+            const agenda = document.getElementById('agendaView');
+            const cal = document.getElementById('calendarView');
+            
+            if (agenda.style.display !== 'none') {
+                agenda.style.display = 'none';
+                cal.style.display = 'block';
+                generateCalendar();
+            } else {
+                agenda.style.display = 'block';
+                cal.style.display = 'none';
+            }
+        }
+
+        function generateCalendar() {
+            const date = new Date();
+            document.getElementById('monthYear').innerText = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+            
+            const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+            const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+            const grid = document.getElementById('calGrid');
+            
+            // Remove old days (keep the day name headers)
+            const days = grid.querySelectorAll('.cal-day');
+            days.forEach(d => d.remove());
+
+            // Get events from Jinja template to highlight days safely
+            const eventDays = [
+                {% if events %}
+                    {% for event in events %}
+                        "{{ event.start.strftime('%d') }}",
+                    {% endfor %}
+                {% endif %}
+            ];
+
+            // Fill blanks
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div class="cal-day" style="background: transparent;"></div>`;
+            }
+
+            // Fill days
+            for (let i = 1; i <= daysInMonth; i++) {
+                let classes = "cal-day";
+                if (i === date.getDate()) classes += " today";
+                
+                // Pad single digits to match strftime('%d')
+                let dayStr = i < 10 ? '0' + i : i.toString();
+                if (eventDays.includes(dayStr)) classes += " has-event";
+                
+                grid.innerHTML += `<div class="${classes}">${i}</div>`;
+            }
+        }
+
+        // Auto-refresh the dashboard every 15 minutes
+        setInterval(() => location.reload(), 900000); 
+    </script>
+</body>
+</html>

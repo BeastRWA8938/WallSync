@@ -1,0 +1,9 @@
+# Ignore Environment Variables
+.env
+
+# Ignore Microsoft Login Token
+token_cache.bin
+
+# Ignore Python Cache
+__pycache__/
+venv/
