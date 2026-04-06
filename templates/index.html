@@ -25,10 +25,12 @@
             flex: 1; 
             overflow-y: auto; 
             position: relative; 
+            scrollbar-width: none;
+            -ms-overflow-style: none;
         }
         
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
+        ::-webkit-scrollbar { display:none; }
+        /* ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; } */
         
         /* Headers & Buttons */
         .header-row { 
