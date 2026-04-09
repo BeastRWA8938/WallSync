@@ -1,6 +1,10 @@
 import msal
+import os
+from dotenv import load_dotenv
 
-CLIENT_ID = "REMOVED"
+load_dotenv()
+
+CLIENT_ID = os.getenv("CLIENT_ID")
 AUTHORITY = "https://login.microsoftonline.com/consumers"
 SCOPES = ["Tasks.ReadWrite"]
 
