@@ -25,7 +25,7 @@ Built for developers who want complete control over their layout without paying 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YourUsername/WallSync.git
+git clone https://github.com/BeastRWA8938/WallSync.git
 cd WallSync
 ```
 
