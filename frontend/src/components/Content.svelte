@@ -1,15 +1,22 @@
+<!--
+Content
+    - TaskView
+    - CalendarView
+    - AIView
+-->
+
 <script>
     let value = $props();
 </script>
 
-<div class="headerContainer">
+<div class="contentContainer">
     {#if value.activeTab=="taskView"}
-    <h1>Task View</h1>
+    <p>Task View</p>
     {:else if value.activeTab=="calendarView"}
-    <h1>Calander View</h1>
+    <p>Calander View</p>
     {:else if value.activeTab=="aiView"}
-    <h1>AI View</h1>
+    <p>AI View</p>
     {:else}
-    <h1>Invalid Tab</h1>
+    <p>Invalid Tab</p>
     {/if}
 </div>
