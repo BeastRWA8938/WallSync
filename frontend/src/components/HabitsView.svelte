@@ -3,7 +3,7 @@
   import Icons from './Icons.svelte'
 
   const API_BASE = import.meta.env.DEV ? 'http://127.0.0.1:5000' : ''
-  const DAY_COUNT = 30
+  const WEEKS_TO_SHOW = 30
 
   let habits = $state([])
   let newHabitName = $state('')
@@ -19,18 +19,65 @@
   }
 
   const todayKey = dateKey(new Date())
-  const days = $derived(
-    Array.from({ length: DAY_COUNT }, (_, index) => {
-      const day = new Date()
-      day.setHours(0, 0, 0, 0)
-      day.setDate(day.getDate() - (DAY_COUNT - 1 - index))
-
-      return {
-        date: dateKey(day),
-        label: new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short' }).format(day),
+  const months = $derived.by(() => {
+    const list = []
+    const today = new Date()
+    const currentYear = today.getFullYear()
+    const currentMonth = today.getMonth()
+    
+    const numMonths = 6
+    
+    for (let i = numMonths - 1; i >= 0; i--) {
+      let targetMonth = currentMonth - i
+      let targetYear = currentYear
+      while (targetMonth < 0) {
+        targetMonth += 12
+        targetYear -= 1
       }
-    }),
-  )
+      
+      const firstDay = new Date(targetYear, targetMonth, 1)
+      const lastDay = new Date(targetYear, targetMonth + 1, 0)
+      
+      const firstDayOfWeek = firstDay.getDay()
+      const startPadCount = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1
+      
+      const monthDays = []
+      
+      for (let p = 0; p < startPadCount; p++) {
+        monthDays.push({ isPlaceholder: true })
+      }
+      
+      const numDays = lastDay.getDate()
+      for (let d = 1; d <= numDays; d++) {
+        const dateObj = new Date(targetYear, targetMonth, d)
+        monthDays.push({
+          isPlaceholder: false,
+          date: dateKey(dateObj),
+          label: new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short' }).format(dateObj)
+        })
+      }
+      
+      const lastDayOfWeek = lastDay.getDay()
+      const endPadCount = lastDayOfWeek === 0 ? 0 : 7 - lastDayOfWeek
+      for (let p = 0; p < endPadCount; p++) {
+        monthDays.push({ isPlaceholder: true })
+      }
+      
+      const weeksList = []
+      for (let w = 0; w < monthDays.length; w += 7) {
+        weeksList.push(monthDays.slice(w, w + 7))
+      }
+      
+      const monthName = new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric' }).format(firstDay)
+      
+      list.push({
+        name: monthName,
+        weeks: weeksList
+      })
+    }
+    
+    return list
+  })
 
   async function request(path, options = {}) {
     const response = await fetch(`${API_BASE}${path}`, {
@@ -156,16 +203,33 @@
             </button>
           </div>
 
-          <div class="heatmap" aria-label={`${habit.name} last 30 days`}>
-            {#each days as day}
-              {@const count = countForDate(habit, day.date)}
-              <span
-                class="heatCell"
-                class:today={day.date === todayKey}
-                style={heatStyle(count)}
-                title={`${day.label}: ${count}`}
-                aria-label={`${day.label}: ${count}`}
-              ></span>
+          <div class="monthsContainer">
+            {#each months as month}
+              <div class="monthBlock">
+                <header class="monthBlockHeader" aria-hidden="true">
+                  {month.name}
+                </header>
+                <div class="monthGrid" aria-label={`${habit.name} ${month.name}`}>
+                  {#each month.weeks as week}
+                    <div class="heatmapWeek">
+                      {#each week as day}
+                        {#if day.isPlaceholder}
+                          <span class="heatCell placeholder" aria-hidden="true"></span>
+                        {:else}
+                          {@const count = countForDate(habit, day.date)}
+                          <span
+                            class="heatCell"
+                            class:today={day.date === todayKey}
+                            style={heatStyle(count)}
+                            title={`${day.label}: ${count}`}
+                            aria-label={`${day.label}: ${count}`}
+                          ></span>
+                        {/if}
+                      {/each}
+                    </div>
+                  {/each}
+                </div>
+              </div>
             {/each}
           </div>
         </article>

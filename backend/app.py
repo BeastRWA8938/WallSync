@@ -204,7 +204,7 @@ def calendar_events():
 @app.get("/api/habits")
 def list_habits():
     end_date = date.today()
-    start_date = end_date - timedelta(days=29)
+    start_date = end_date - timedelta(days=220)
 
     with get_db_connection() as connection:
         habits = connection.execute(

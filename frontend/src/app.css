@@ -189,50 +189,10 @@ button:disabled {
   display: block;
 }
 
-/* --- Widescreen CSS Fluid Grid (Option B) --- */
+/* --- Widescreen CSS layout styles --- */
 @media (min-width: 1024px) {
   .contentContainer {
-    display: grid;
-    /* 3 equal columns that adjust fluidly but fit perfectly */
-    grid-template-columns: repeat(3, minmax(320px, 1fr));
-    gap: 20px;
-    padding: 20px;
-  }
-
-  /* Force tasks, calendar, and habits to render side-by-side */
-  .tasksWidget,
-  .calendarWidget,
-  .habitsWidget {
-    display: block !important;
-  }
-
-  /* Render AI Agent view as a stunning, floating right-hand drawer */
-  .agentWidget {
-    position: fixed;
-    top: 96px; /* Below header */
-    right: 88px; /* Sidebar width */
-    bottom: 0;
-    width: 440px;
-    z-index: 100;
-    display: block !important;
-    transform: translateX(120%);
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: -12px 0 35px rgba(0, 0, 0, 0.65);
-    background: rgba(10, 14, 20, 0.85) !important;
-    border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-  }
-
-  .agentWidget :global(.panel) {
-    border-radius: 0;
-    border: none;
-    background: none;
-    backdrop-filter: blur(24px);
-  }
-
-  .active-tab-agent .agentWidget {
-    transform: translateX(0);
+    padding: 24px;
   }
 }
 
@@ -323,7 +283,7 @@ input {
 
 .habitRow {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) auto minmax(240px, 420px);
+  grid-template-columns: minmax(120px, 1fr) auto auto;
   align-items: center;
   gap: 14px;
   border: 1px solid #242c38;
@@ -368,18 +328,54 @@ input {
   background: #1d4f86;
 }
 
-.heatmap {
-  display: grid;
-  grid-template-columns: repeat(30, minmax(6px, 1fr));
-  gap: 4px;
+.monthsContainer {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  justify-content: end;
   min-width: 0;
 }
 
+.monthBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.monthBlockHeader {
+  font-size: 0.68rem;
+  color: #8b98aa;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.monthGrid {
+  display: flex;
+  flex-direction: row;
+  gap: 3px;
+}
+
+.heatmapWeek {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
 .heatCell {
-  aspect-ratio: 1;
-  min-width: 6px;
+  width: 10px;
+  height: 10px;
   border: 1px solid #303946;
-  border-radius: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.heatCell.placeholder {
+  border: none;
+  background: transparent !important;
+  pointer-events: none;
 }
 
 .heatCell.today {
@@ -409,7 +405,10 @@ input {
     grid-template-columns: 1fr auto;
   }
 
-  .heatmap {
+  .monthsContainer {
     grid-column: 1 / -1;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px 16px;
   }
 }

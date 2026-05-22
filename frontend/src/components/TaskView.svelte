@@ -266,7 +266,15 @@
 
   .taskList {
     display: grid;
+    grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  @media (min-width: 1024px) {
+    .taskList {
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 12px;
+    }
   }
 
   .taskRow {
