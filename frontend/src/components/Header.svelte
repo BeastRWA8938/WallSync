@@ -1,15 +1,24 @@
 <script>
-    let value = $props();
+  let { activeTab } = $props()
+
+  const titles = {
+    tasks: 'Tasks',
+    calendar: 'Calendar',
+    habits: 'Habits',
+    agent: 'AI Agent',
+  }
+
+  const today = new Intl.DateTimeFormat('en-IN', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  }).format(new Date())
 </script>
 
-<div class="headerContainer">
-    {#if value.activeTab=="taskView"}
-    <h1>Task View</h1>
-    {:else if value.activeTab=="calendarView"}
-    <h1>Calander View</h1>
-    {:else if value.activeTab=="aiView"}
-    <h1>AI View</h1>
-    {:else}
-    <h1>Invalid Tab</h1>
-    {/if}
-</div>
+<header class="headerContainer">
+  <div>
+    <p class="eyebrow">WallSync</p>
+    <h1>{titles[activeTab] ?? 'Command Center'}</h1>
+  </div>
+  <time datetime={new Date().toISOString()}>{today}</time>
+</header>

@@ -1,22 +1,24 @@
-<!--
-Content
-    - TaskView
-    - CalendarView
-    - AIView
--->
-
 <script>
-    let value = $props();
+  import AIView from './AIView.svelte'
+  import CalendarView from './CalendarView.svelte'
+  import HabitsView from './HabitsView.svelte'
+  import TaskView from './TaskView.svelte'
+
+  let { activeTab } = $props()
 </script>
 
-<div class="contentContainer">
-    {#if value.activeTab=="taskView"}
-    <p>Task View</p>
-    {:else if value.activeTab=="calendarView"}
-    <p>Calander View</p>
-    {:else if value.activeTab=="aiView"}
-    <p>AI View</p>
-    {:else}
-    <p>Invalid Tab</p>
-    {/if}
+<div class="contentContainer active-tab-{activeTab}">
+  <div class="widgetWrapper tasksWidget">
+    <TaskView />
+  </div>
+  <div class="widgetWrapper calendarWidget">
+    <CalendarView />
+  </div>
+  <div class="widgetWrapper habitsWidget">
+    <HabitsView />
+  </div>
+  <div class="widgetWrapper agentWidget">
+    <AIView />
+  </div>
 </div>
+

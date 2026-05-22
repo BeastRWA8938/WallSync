@@ -2,69 +2,414 @@
   box-sizing: border-box;
 }
 
+html,
 body {
-  background: #000000; 
-  color: white; 
-  font-family: 'Segoe UI', system-ui, sans-serif; 
-  margin: 0; 
-  padding: 20px; 
-  height: 100vh; /* Exactly 100% of the screen height */
-  width: 100vw;  /* Exactly 100% of the screen width */
-  overflow: hidden; /* Stops the main page from scrolling */
-  display: flex; 
-  flex-direction: column; 
-  gap: 20px; 
+  margin: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+body {
+  background: #050608;
+  color: #eef2f8;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
 }
 
 .appContainer {
   display: flex;
   flex-direction: row;
-  min-height: 100vh;
-  min-width: 100vh;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .sidebarContainer {
-  /* background-color: gray; */
+  width: 88px;
+  height: 100vh;
+  flex: 0 0 88px;
+  order: 2;
+  background: #0f131a;
+  border-left: 1px solid #242c38;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  min-width: 10%;
-    /* justify-content: space-between; */
   align-items: center;
-  border-left: 1px solid #30363d;
-  padding-left: 10px;
-  margin-left: 15px;
+  justify-content: space-between;
+  padding: 18px 12px;
 }
 
 .sidebarTabs {
-  /* background-color: gray; */
-  height: 20vh;
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
+  gap: 12px;
+}
+
+.brandMark,
+.sidebarButton {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+}
+
+.brandMark {
+  background: #1a2230;
+  color: #8fb9ff;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.sidebarButton {
+  border: 1px solid #2a3341;
+  background: #141923;
+  color: #aeb9c8;
+}
+
+.sidebarButton:hover,
+.sidebarButton.active {
+  background: #224067;
+  color: #ffffff;
+  border-color: #4a8dd8;
 }
 
 .mainContainer {
-  background-color: black;
+  min-width: 0;
+  height: 100vh;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  color: aliceblue;
-  min-width: 90%;
+  overflow: hidden;
 }
 
 .headerContainer {
-  color: #58a6ff;
-  font-weight: normal;
-  font-size: 1rem;
+  min-height: 96px;
+  padding: 18px 22px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #30363d;
-  padding-bottom: 10px;
-  margin-bottom: 15px;
+  border-bottom: 1px solid #242c38;
+  background: #090c11;
+}
+
+.headerContainer h1 {
+  margin: 2px 0 0;
+  font-size: 1.55rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.headerContainer time,
+.eyebrow {
+  color: #8b98aa;
+  font-size: 0.85rem;
+}
+
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
 }
 
 .contentContainer {
-  background-color: cadetblue;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  padding: 16px;
+  background: radial-gradient(circle at 10% 20%, #0c0f17 0%, #050608 90%);
+  position: relative;
 }
 
+/* Glassmorphic Panels for Premium Aesthetics */
+.panel {
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(13, 17, 24, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 18px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.panel:hover {
+  border-color: rgba(74, 141, 216, 0.25);
+  box-shadow: 0 12px 40px 0 rgba(74, 141, 216, 0.12);
+}
+
+.scrollPanel {
+  overflow-y: auto;
+}
+
+/* Custom Premium Scrollbar styling */
+.scrollPanel::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollPanel::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+.scrollPanel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 99px;
+}
+.scrollPanel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* --- Widget wrapper layout engine --- */
+.widgetWrapper {
+  display: none; /* Hide on narrow vertical screens by default */
+  height: 100%;
+}
+
+/* Responsive tab filters for narrow screens */
+.active-tab-tasks .tasksWidget,
+.active-tab-calendar .calendarWidget,
+.active-tab-habits .habitsWidget,
+.active-tab-agent .agentWidget {
+  display: block;
+}
+
+/* --- Widescreen CSS Fluid Grid (Option B) --- */
+@media (min-width: 1024px) {
+  .contentContainer {
+    display: grid;
+    /* 3 equal columns that adjust fluidly but fit perfectly */
+    grid-template-columns: repeat(3, minmax(320px, 1fr));
+    gap: 20px;
+    padding: 20px;
+  }
+
+  /* Force tasks, calendar, and habits to render side-by-side */
+  .tasksWidget,
+  .calendarWidget,
+  .habitsWidget {
+    display: block !important;
+  }
+
+  /* Render AI Agent view as a stunning, floating right-hand drawer */
+  .agentWidget {
+    position: fixed;
+    top: 96px; /* Below header */
+    right: 88px; /* Sidebar width */
+    bottom: 0;
+    width: 440px;
+    z-index: 100;
+    display: block !important;
+    transform: translateX(120%);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: -12px 0 35px rgba(0, 0, 0, 0.65);
+    background: rgba(10, 14, 20, 0.85) !important;
+    border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+
+  .agentWidget :global(.panel) {
+    border-radius: 0;
+    border: none;
+    background: none;
+    backdrop-filter: blur(24px);
+  }
+
+  .active-tab-agent .agentWidget {
+    transform: translateX(0);
+  }
+}
+
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.sectionHeader h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.statusPill {
+  color: #b4c8e8;
+  background: #172235;
+  border: 1px solid #284569;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+}
+
+.inlineForm,
+.composer {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid #2b3544;
+  border-radius: 8px;
+  background: #070a0f;
+  color: #eef2f8;
+  padding: 10px 12px;
+}
+
+.inlineForm button,
+.composer button {
+  border: 1px solid #4a8dd8;
+  border-radius: 8px;
+  background: #1d4f86;
+  color: white;
+  padding: 0 14px;
+}
+
+.placeholderList {
+  display: grid;
+  gap: 10px;
+}
+
+.placeholderList article,
+.message {
+  border: 1px solid #242c38;
+  border-radius: 8px;
+  background: #101722;
+  padding: 12px;
+}
+
+.placeholderList p,
+.message p {
+  margin: 6px 0 0;
+  color: #aeb9c8;
+  line-height: 1.45;
+}
+
+.chatLog {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.habitsPanel {
+  display: flex;
+  flex-direction: column;
+}
+
+.habitList {
+  display: grid;
+  gap: 10px;
+}
+
+.habitRow {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto minmax(240px, 420px);
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #242c38;
+  border-radius: 8px;
+  background: #101722;
+  padding: 12px;
+}
+
+.habitInfo {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.habitInfo strong {
+  overflow-wrap: anywhere;
+}
+
+.habitInfo span {
+  color: #8b98aa;
+  font-size: 0.82rem;
+}
+
+.habitControls {
+  display: flex;
+  gap: 6px;
+}
+
+.habitControls button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #2b3544;
+  border-radius: 8px;
+  background: #141d29;
+  color: #eef2f8;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.habitControls button:hover {
+  border-color: #4a8dd8;
+  background: #1d4f86;
+}
+
+.heatmap {
+  display: grid;
+  grid-template-columns: repeat(30, minmax(6px, 1fr));
+  gap: 4px;
+  min-width: 0;
+}
+
+.heatCell {
+  aspect-ratio: 1;
+  min-width: 6px;
+  border: 1px solid #303946;
+  border-radius: 3px;
+}
+
+.heatCell.today {
+  outline: 1px solid #d8e8ff;
+  outline-offset: 2px;
+}
+
+.errorText,
+.emptyState {
+  border: 1px solid #242c38;
+  border-radius: 8px;
+  background: #101722;
+  padding: 12px;
+}
+
+.errorText {
+  color: #ffb4b4;
+  margin: 0 0 12px;
+}
+
+.emptyState {
+  color: #aeb9c8;
+}
+
+@media (max-width: 760px) {
+  .habitRow {
+    grid-template-columns: 1fr auto;
+  }
+
+  .heatmap {
+    grid-column: 1 / -1;
+  }
+}

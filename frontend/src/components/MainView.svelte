@@ -1,17 +1,11 @@
-<!-- 
- MainView
-    - Header
-    - Content
--->
-
 <script>
-    import Header from './Header.svelte'
-    import Content from './Content.svelte'
+  import Header from './Header.svelte'
+  import Content from './Content.svelte'
 
-    let value = $props();
+  let { activeTab } = $props()
 </script>
 
-<div class="mainContainer">
-    <Header activeTab={value.activeTab}/>
-    <Content activeTab={value.activeTab}/>
-</div>
+<main class="mainContainer">
+  <Header {activeTab} />
+  <Content {activeTab} />
+</main>

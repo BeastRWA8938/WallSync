@@ -1,3 +1,3 @@
 @echo off
-cd "C:\Users\Rushikesh\Desktop\Data\PersonalPrograms\WallSync - LiveToDoAndCalander\backend"
-python app.py
+cd /d "C:\Users\Rushikesh\Desktop\Data\PersonalPrograms\WallSync - LiveToDoAndCalander"
+".\venv\Scripts\python.exe" backend\app.py

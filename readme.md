@@ -1,89 +1,181 @@
-# WallSync 🔄
+# WallSync
 
-A fully interactive, locally hosted "Command Center" dashboard designed specifically for vertical monitors. WallSync acts as a live, interactive wallpaper that syncs directly with Google Calendar and Microsoft To-Do (including Samsung Reminders).
+WallSync is a locally hosted command-center dashboard designed to run as an interactive desktop wallpaper through Lively Wallpaper on a vertical monitor.
 
-Built for developers who want complete control over their layout without paying for subscription-based dashboard services.
+The app uses a lightweight Svelte/Vite frontend and a Flask backend. During development, Vite and Flask can run on separate ports. For production and wallpaper mode, the Svelte app is built into static files and served directly by Flask on a single port: `http://127.0.0.1:5000`.
 
-## ✨ Features
+## Current Stack
 
-* **Two-Way Task Sync:** Pulls active tasks from Microsoft To-Do/Samsung Reminders. You can mark tasks as completed or add new ones directly from your desktop wallpaper.
-* **Google Calendar Integration:** Parses private `.ics` feeds to display a daily agenda and a monthly calendar grid.
-* **Zero Overhead & 100% Free:** Runs entirely locally using a lightweight Flask backend. No cloud subscriptions, no paywalls.
-* **Vertical First UI:** Custom CSS designed specifically for portrait orientation monitors (e.g., 1366x768 rotated).
-* **Silent Autostart:** Includes VBScript configurations to boot silently with Windows.
-* **Interactive Wallpaper:** Designed to be used seamlessly with [Lively Wallpaper](https://rocksdanister.github.io/lively/).
+- Frontend: Svelte + Vite
+- Backend: Python + Flask
+- Dev CORS: Flask-Cors for `/api/*`
+- Tasks: Microsoft Graph API through MSAL
+- Calendar: Google Calendar private `.ics` feed through `icalevents`
+- Habits: local Flask endpoint placeholder, ready for SQLite or JSON storage
+- AI Agent: Flask endpoint placeholder, ready for LangChain/Groq integration later
 
-## 🛠️ Prerequisites
+## Project Structure
 
-* Python 3.8 or higher
-* [Lively Wallpaper](https://rocksdanister.github.io/lively/) (for desktop background integration)
-* A Google Calendar Account
-* A Microsoft/Outlook Account (for Microsoft To-Do)
-
-## 🚀 Installation & Setup
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/BeastRWA8938/WallSync.git
-cd WallSync
+```text
+WallSync - LiveToDoAndCalander/
+  backend/
+    app.py
+    auth_setup.py
+    token_cache.bin
+  frontend/
+    src/
+      App.svelte
+      app.css
+      components/
+    dist/
+  requirements.txt
+  start_server.bat
+  invisible.vbs
 ```
 
-### 2. Install Dependencies
+## Requirements
 
-```bash
-pip install -r requirements.txt
+- Node.js and npm
+- Python 3.10 or newer
+- Lively Wallpaper, for wallpaper mode
+- Microsoft account, for Microsoft To Do
+- Google Calendar private ICS URL, for calendar events
+
+## First-Time Setup
+
+Install frontend dependencies:
+
+```powershell
+cd frontend
+npm install
 ```
 
-### 3. Environment Variables
+Create and install backend dependencies:
 
-Create a file named `.env` in the root directory. You need to obtain two keys:
+```powershell
+cd ..
+python -m venv venv
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
+```
 
-1. **Google ICS URL:** Go to Google Calendar -> Settings -> Integrate Calendar -> Copy the "Secret address in iCal format".
-2. **Microsoft Client ID:** Go to the [Azure Portal](https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade). Create a new App Registration ("Personal accounts only"). Grant it the `Tasks.ReadWrite` Graph API permission. Add `http://localhost:8080` as a "Mobile and desktop applications" Redirect URI.
-
-Add them to your `.env` file like this:
+Create a `.env` file in the project root:
 
 ```env
 GOOGLE_ICS_URL=https://calendar.google.com/calendar/ical/your_secret_link/basic.ics
 CLIENT_ID=your_microsoft_client_id_here
+FLASK_ENV=development
 ```
 
-### 4. Initial Authentication
+Run one-time Microsoft authentication:
 
-Microsoft Graph requires a one-time user login to generate a token cache.
-
-```bash
-python auth_setup.py
+```powershell
+cd backend
+..\venv\Scripts\python.exe auth_setup.py
 ```
 
-This will open your browser. Log in to your Microsoft account. Once the terminal says "SUCCESS" and generates a `token_cache.bin` file, you never need to run this script again.
+## Development Mode
 
-### 5. Run the Server
+Run Flask API on port `5000`:
 
-```bash
-python app.py
+```powershell
+.\venv\Scripts\python.exe backend\app.py
 ```
 
-Open your browser and navigate to `http://localhost:5000` to preview the dashboard.
+Run Svelte/Vite on port `5173`:
 
-## 🖥️ Setting as Wallpaper (Lively)
+```powershell
+cd frontend
+npm.cmd run dev
+```
 
-1. Open Lively Wallpaper.
-2. Click **Add Wallpaper**.
-3. Enter `http://localhost:5000` as the URL.
-4. Assign it to your vertical monitor.
-5. *Important:* In Lively settings, go to Wallpaper -> Interaction -> Set Input to "Always" so you can click checkboxes and buttons!
+Open:
 
-## 👻 Silent Autostart (Windows)
+```text
+http://127.0.0.1:5173
+```
 
-To have WallSync launch invisibly when your PC boots:
+In development, the frontend can call Flask API routes at:
 
-1. Edit `start_server.bat` to include your absolute folder path.
-2. Create a shortcut of `invisible.vbs`.
-3. Press `Win + R`, type `shell:startup`, and press Enter.
-4. Drag the shortcut into the Startup folder.
+```text
+http://127.0.0.1:5000/api/...
+```
 
-## 🤝 Contributing
+## Production / Wallpaper Mode
 
-Feel free to fork this project and add your own modules (e.g., local weather from an ESP32 sensor, Spotify current playing, etc.). Pull requests are welcome!
+Build the frontend:
+
+```powershell
+cd frontend
+npm.cmd run build
+```
+
+Start Flask from the project root:
+
+```powershell
+cd ..
+.\venv\Scripts\python.exe backend\app.py
+```
+
+Open:
+
+```text
+http://127.0.0.1:5000
+```
+
+Flask serves `frontend/dist/index.html` and the compiled static assets. No Node.js server is needed in production.
+
+## API Routes
+
+- `GET /api/health`
+- `GET /api/tasks`
+- `POST /api/tasks`
+- `POST /api/tasks/<list_id>/<task_id>/complete`
+- `GET /api/calendar/events`
+- `GET /api/habits`
+- `POST /api/agent/chat`
+
+## Lively Wallpaper Setup
+
+1. Build the frontend with `npm.cmd run build`.
+2. Start Flask on `http://127.0.0.1:5000`.
+3. Open Lively Wallpaper.
+4. Add a URL wallpaper using `http://127.0.0.1:5000`.
+5. Assign it to the vertical monitor.
+6. Enable wallpaper interaction in Lively settings so buttons and inputs can receive clicks.
+
+## Windows Autostart
+
+`start_server.bat` is intended to launch Flask. If your folder location changes, update the `cd` path inside that file.
+
+To run silently on startup:
+
+```powershell
+Win + R
+shell:startup
+```
+
+Place a shortcut to `invisible.vbs` in that startup folder.
+
+## Troubleshooting
+
+If PowerShell blocks `npm` scripts, use:
+
+```powershell
+npm.cmd run dev
+npm.cmd run build
+```
+
+If Python opens the Microsoft Store or reports a WindowsApps path, install Python normally from python.org and recreate the virtual environment:
+
+```powershell
+Remove-Item -Recurse -Force venv
+python -m venv venv
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+If Flask says the frontend build is missing, run:
+
+```powershell
+cd frontend
+npm.cmd run build
+```

@@ -1,30 +1,33 @@
-<!-- 
- SideBar
--->
 <script>
-import { createEventDispatcher } from "svelte";
+  import Icons from './Icons.svelte'
 
-const dispatch = createEventDispatcher();
+  let { activeTab, onSelectTab } = $props()
 
-    let value = $props();
-    let icon_list = [
-        {'id':'taskView', 'label':'Task'},
-        {'id':'calendarView', 'label':'Calendar'},
-        {'id':'aiView', 'label':'AI'},
-    ]
-
-    function intent (tabName) {
-        console.log(tabName);
-        dispatch('intent', tabName);
-    }
+  const tabs = [
+    { id: 'tasks', label: 'Tasks' },
+    { id: 'calendar', label: 'Calendar' },
+    { id: 'habits', label: 'Habits' },
+    { id: 'agent', label: 'AI Agent' },
+  ]
 </script>
 
-<div class="sidebarContainer">
-    <div class="sidebarTabs">
-        {#each icon_list as icon}
-        <button onclick={() => intent(icon.id)} class="sidebarButtons {value.activeTab === icon.id ? 'active' : ''}">
-            <div>{icon.label}</div>
-        </button>
-        {/each}
-    </div>
-</div>
+<aside class="sidebarContainer" aria-label="Primary navigation">
+  <div class="brandMark">WS</div>
+
+  <nav class="sidebarTabs">
+    {#each tabs as tab}
+      <button
+        type="button"
+        class:active={activeTab === tab.id}
+        class="sidebarButton"
+        aria-label={tab.label}
+        aria-current={activeTab === tab.id ? 'page' : undefined}
+        title={tab.label}
+        onclick={() => onSelectTab(tab.id)}
+      >
+        <Icons name={tab.id} size={22} />
+      </button>
+    {/each}
+  </nav>
+</aside>
+
