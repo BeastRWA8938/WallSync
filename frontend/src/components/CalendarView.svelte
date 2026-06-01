@@ -158,32 +158,6 @@
     flex-direction: column;
   }
 
-  .refreshButton {
-    background: none;
-    border: none;
-    color: #8b98aa;
-    cursor: pointer;
-    padding: 6px;
-    display: grid;
-    place-items: center;
-    border-radius: 4px;
-    transition: all 0.2s;
-  }
-
-  .refreshButton:hover:not(:disabled) {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  :global(.spinning) {
-    animation: rotateSpin 1.5s infinite linear;
-  }
-
-  @keyframes rotateSpin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
   .calendarConfigCard {
     border: 1px solid #242c38;
     border-radius: 8px;

@@ -95,7 +95,12 @@
 <section class="panel scrollPanel tasksPanel">
   <div class="sectionHeader">
     <h2>✓ Today's Tasks</h2>
-    <span class="statusPill">{needsAuth ? 'Auth Required' : 'Microsoft To Do'}</span>
+    <div class="headerActions">
+      <span class="statusPill">{needsAuth ? 'Auth Required' : 'Microsoft To Do'}</span>
+      <button class="refreshButton" aria-label="Refresh tasks" onclick={loadTasks} disabled={isLoading}>
+        <Icons name="agent" size={14} class={isLoading ? 'spinning' : ''} />
+      </button>
+    </div>
   </div>
 
   {#if error}
