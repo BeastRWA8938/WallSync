@@ -76,6 +76,22 @@ def init_database():
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS processed_tasks (
+                task_id TEXT PRIMARY KEY,
+                completed_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sync_metadata (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+            """
+        )
 
 
 init_database()
@@ -128,11 +144,102 @@ def list_tasks():
     if not task_list:
         return jsonify({"tasks": []})
 
-    url = f"https://graph.microsoft.com/v1.0/me/todo/lists/{task_list['id']}/tasks?$filter=status ne 'completed'"
-    response = requests.get(url, headers=headers, timeout=15)
+    # 1. Fetch active tasks from Microsoft Graph
+    url_active = f"https://graph.microsoft.com/v1.0/me/todo/lists/{task_list['id']}/tasks?$filter=status ne 'completed'"
+    response = requests.get(url_active, headers=headers, timeout=15)
     response.raise_for_status()
-
     tasks = response.json().get("value", [])
+
+    # 2. Get the last_sync_time from metadata table
+    last_sync_time = None
+    with get_db_connection() as connection:
+        row = connection.execute("SELECT value FROM sync_metadata WHERE key = 'last_sync_time'").fetchone()
+        if row:
+            last_sync_time = row["value"]
+
+    if not last_sync_time:
+        # Default: 24 hours ago
+        last_sync_time = (datetime.utcnow() - timedelta(days=1)).isoformat() + "Z"
+
+    # Save the current execution time for the next cycle
+    current_utc_time = datetime.utcnow().isoformat() + "Z"
+
+    # 3. Fetch recently completed tasks from Microsoft Graph
+    completed_tasks = []
+    try:
+        url_completed = f"https://graph.microsoft.com/v1.0/me/todo/lists/{task_list['id']}/tasks"
+        query_params = {
+            "$filter": f"status eq 'completed' and completedDateTime/dateTime ge {last_sync_time}"
+        }
+        completed_response = requests.get(url_completed, headers=headers, params=query_params, timeout=15)
+        if completed_response.ok:
+            completed_tasks = completed_response.json().get("value", [])
+    except Exception:
+        pass # fallback silently so task loading never breaks if Graph limits filter query format
+
+    # 4. Process completed tasks (deduplication & PC-offline timezone date alignment)
+    for c_task in completed_tasks:
+        task_id = c_task["id"]
+        
+        # Check deduplication ledger
+        with get_db_connection() as connection:
+            row = connection.execute("SELECT 1 FROM processed_tasks WHERE task_id = ?", (task_id,)).fetchone()
+            if row:
+                continue # Skip already processed task
+        
+        # Query matching active habits
+        title = c_task.get("title", "")
+        completed_time_str = c_task.get("completedDateTime", {}).get("dateTime")
+        
+        # Extract chronological exact date
+        # E.g. "2026-05-31T20:15:30.0000000" -> "2026-05-31"
+        if completed_time_str:
+            completed_date_str = completed_time_str.split("T")[0]
+        else:
+            completed_date_str = date.today().isoformat()
+
+        with get_db_connection() as connection:
+            habits = connection.execute("SELECT id, name FROM habits").fetchall()
+
+        matched_habit_ids = []
+        for habit in habits:
+            # Case-insensitive substring match
+            if habit["name"].lower() in title.lower():
+                matched_habit_ids.append(habit["id"])
+
+        if matched_habit_ids:
+            with get_db_connection() as connection:
+                for h_id in matched_habit_ids:
+                    connection.execute(
+                        """
+                        INSERT INTO completions (habit_id, completed_date, count)
+                        VALUES (?, ?, 1)
+                        ON CONFLICT(habit_id, completed_date)
+                        DO UPDATE SET count = count + 1
+                        """,
+                        (h_id, completed_date_str),
+                    )
+
+        # Log into processed ledger
+        with get_db_connection() as connection:
+            connection.execute(
+                "INSERT OR IGNORE INTO processed_tasks (task_id, completed_at) VALUES (?, ?)",
+                (task_id, current_utc_time),
+            )
+
+    # 5. Save the new last_sync_time into metadata
+    with get_db_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO sync_metadata (key, value)
+            VALUES ('last_sync_time', ?)
+            ON CONFLICT(key)
+            DO UPDATE SET value = excluded.value
+            """,
+            (current_utc_time,),
+        )
+
+    # 6. Format and return active tasks
     for task in tasks:
         task["list_id"] = task_list["id"]
 
