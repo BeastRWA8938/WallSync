@@ -169,7 +169,7 @@ def list_tasks():
     try:
         url_completed = f"https://graph.microsoft.com/v1.0/me/todo/lists/{task_list['id']}/tasks"
         query_params = {
-            "$filter": f"status eq 'completed' and completedDateTime/dateTime ge {last_sync_time}"
+            "$filter": f"status eq 'completed' and lastModifiedDateTime ge {last_sync_time}"
         }
         completed_response = requests.get(url_completed, headers=headers, params=query_params, timeout=15)
         if completed_response.ok:
@@ -191,10 +191,15 @@ def list_tasks():
         title = c_task.get("title", "")
         completed_time_str = c_task.get("completedDateTime", {}).get("dateTime")
         
-        # Extract chronological exact date
-        # E.g. "2026-05-31T20:15:30.0000000" -> "2026-05-31"
+        # Extract chronological exact date adjusted for Indian Standard Time (+5:30)
         if completed_time_str:
-            completed_date_str = completed_time_str.split("T")[0]
+            base_str = completed_time_str.split(".")[0].replace("Z", "")
+            try:
+                utc_dt = datetime.fromisoformat(base_str)
+                local_dt = utc_dt + timedelta(hours=5, minutes=30)
+                completed_date_str = local_dt.strftime("%Y-%m-%d")
+            except ValueError:
+                completed_date_str = completed_time_str.split("T")[0]
         else:
             completed_date_str = date.today().isoformat()
 
@@ -281,6 +286,9 @@ def complete_task(list_id, task_id):
     if not headers:
         return jsonify({"error": "Microsoft Graph is not authenticated"}), 401
 
+    title = (request.json or {}).get("title", "").strip()
+
+    # 1. Update status to completed in Microsoft Graph
     response = requests.patch(
         f"https://graph.microsoft.com/v1.0/me/todo/lists/{list_id}/tasks/{task_id}",
         headers=headers,
@@ -288,6 +296,44 @@ def complete_task(list_id, task_id):
         timeout=15,
     )
     response.raise_for_status()
+
+    # 2. Process matching habits immediately
+    if title:
+        with get_db_connection() as connection:
+            row = connection.execute("SELECT 1 FROM processed_tasks WHERE task_id = ?", (task_id,)).fetchone()
+        
+        if not row:
+            with get_db_connection() as connection:
+                habits = connection.execute("SELECT id, name FROM habits").fetchall()
+
+            matched_habit_ids = []
+            for habit in habits:
+                if habit["name"].lower() in title.lower():
+                    matched_habit_ids.append(habit["id"])
+
+            if matched_habit_ids:
+                completed_date_str = date.today().isoformat()
+                
+                with get_db_connection() as connection:
+                    for h_id in matched_habit_ids:
+                        connection.execute(
+                            """
+                            INSERT INTO completions (habit_id, completed_date, count)
+                            VALUES (?, ?, 1)
+                            ON CONFLICT(habit_id, completed_date)
+                            DO UPDATE SET count = count + 1
+                            """,
+                            (h_id, completed_date_str),
+                        )
+
+            # Log to deduplication processed ledger
+            current_utc_time = datetime.utcnow().isoformat() + "Z"
+            with get_db_connection() as connection:
+                connection.execute(
+                    "INSERT OR IGNORE INTO processed_tasks (task_id, completed_at) VALUES (?, ?)",
+                    (task_id, current_utc_time),
+                )
+
     return jsonify({"success": True})
 
 

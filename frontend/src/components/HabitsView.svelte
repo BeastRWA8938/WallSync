@@ -163,7 +163,18 @@
     return `background: rgba(46, 204, 113, ${opacity}); border-color: rgba(75, 224, 132, ${Math.min(opacity + 0.12, 1)});`
   }
 
-  onMount(loadHabits)
+  onMount(() => {
+    loadHabits()
+
+    const handleTaskCompleted = () => {
+      loadHabits()
+    }
+    window.addEventListener('task-completed', handleTaskCompleted)
+
+    return () => {
+      window.removeEventListener('task-completed', handleTaskCompleted)
+    }
+  })
 </script>
 
 <section class="panel scrollPanel habitsPanel">

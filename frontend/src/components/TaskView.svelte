@@ -73,9 +73,17 @@
     completingTasks.add(taskId)
     completingTasks = new Set(completingTasks)
 
+    const task = tasks.find((t) => t.id === taskId)
+    const title = task ? task.title : ''
+
     try {
-      await request(`/api/tasks/${listId}/${taskId}/complete`, { method: 'POST' })
+      await request(`/api/tasks/${listId}/${taskId}/complete`, {
+        method: 'POST',
+        body: JSON.stringify({ title }),
+      })
       
+      window.dispatchEvent(new CustomEvent('task-completed'))
+
       // Delay removal for satisfying completed slide-out/fade animation
       setTimeout(() => {
         tasks = tasks.filter((t) => t.id !== taskId)
@@ -160,7 +168,7 @@
               <span class="taskTitle">{task.title}</span>
               {#if task.dueDateTime}
                 <span class="taskDueDate">
-                  Due: {new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short' }).format(new Date(task.dueDateTime.dateTime))}
+                  Due: {new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short' }).format(new Date(task.dueDateTime.dateTime.endsWith('Z') ? task.dueDateTime.dateTime : task.dueDateTime.dateTime + 'Z'))}
                 </span>
               {/if}
             </div>
