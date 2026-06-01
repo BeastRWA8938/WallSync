@@ -21,7 +21,7 @@
   let intervalId = null
 
   // Dropdown options
-  const topics = ['Study', 'Gaming', 'Timepass']
+  const topics = ['Study', 'Gaming', 'Timepass', 'Productive']
 
   // Date helper
   function getTodayDateString() {
@@ -228,7 +228,7 @@
   const todayTotalSeconds = $derived(todaySessions.reduce((acc, s) => acc + s.duration_seconds, 0))
 
   const todaySecondsByTopic = $derived.by(() => {
-    const dict = { Study: 0, Gaming: 0, Timepass: 0 }
+    const dict = { Study: 0, Gaming: 0, Timepass: 0, Productive: 0 }
     todaySessions.forEach((s) => {
       if (dict[s.topic] !== undefined) {
         dict[s.topic] += s.duration_seconds
@@ -296,8 +296,9 @@
       const study = daySessions.filter((s) => s.topic === 'Study').reduce((acc, s) => acc + s.duration_seconds, 0)
       const gaming = daySessions.filter((s) => s.topic === 'Gaming').reduce((acc, s) => acc + s.duration_seconds, 0)
       const timepass = daySessions.filter((s) => s.topic === 'Timepass').reduce((acc, s) => acc + s.duration_seconds, 0)
+      const productive = daySessions.filter((s) => s.topic === 'Productive').reduce((acc, s) => acc + s.duration_seconds, 0)
 
-      list.push({ label, Study: study, Gaming: gaming, Timepass: timepass })
+      list.push({ label, Study: study, Gaming: gaming, Timepass: timepass, Productive: productive })
     }
     return list
   })
@@ -325,8 +326,9 @@
       const study = weekSessions.filter((s) => s.topic === 'Study').reduce((acc, s) => acc + s.duration_seconds, 0)
       const gaming = weekSessions.filter((s) => s.topic === 'Gaming').reduce((acc, s) => acc + s.duration_seconds, 0)
       const timepass = weekSessions.filter((s) => s.topic === 'Timepass').reduce((acc, s) => acc + s.duration_seconds, 0)
+      const productive = weekSessions.filter((s) => s.topic === 'Productive').reduce((acc, s) => acc + s.duration_seconds, 0)
 
-      list.push({ label, Study: study, Gaming: gaming, Timepass: timepass })
+      list.push({ label, Study: study, Gaming: gaming, Timepass: timepass, Productive: productive })
     }
     return list
   })
@@ -334,7 +336,7 @@
   // Determine max duration for chart scaling
   const chartData = $derived(historyViewMode === 'weekly' ? weeklyData : monthlyData)
   const maxSessionSeconds = $derived.by(() => {
-    const maxVal = Math.max(...chartData.map((d) => d.Study + d.Gaming + d.Timepass), 0)
+    const maxVal = Math.max(...chartData.map((d) => d.Study + d.Gaming + d.Timepass + d.Productive), 0)
     return maxVal === 0 ? 3600 : maxVal // default 1 hour scale if all empty
   })
 </script>
@@ -364,7 +366,7 @@
 
       <div class="stopwatchDisplay">
         <span class="elapsedText">{formatTime(elapsedTime)}</span>
-        <span class="activeTag" class:tag-study={activeTopic === 'Study'} class:tag-gaming={activeTopic === 'Gaming'} class:tag-timepass={activeTopic === 'Timepass'}>
+        <span class="activeTag" class:tag-study={activeTopic === 'Study'} class:tag-gaming={activeTopic === 'Gaming'} class:tag-timepass={activeTopic === 'Timepass'} class:tag-productive={activeTopic === 'Productive'}>
           {activeTopic}
         </span>
       </div>
@@ -429,12 +431,16 @@
             {#if todaySecondsByTopic.Timepass > 0}
               <div class="barSegment seg-timepass" style="flex-grow: {todaySecondsByTopic.Timepass}" title={`Timepass: ${formatDurationText(todaySecondsByTopic.Timepass)}`}></div>
             {/if}
+            {#if todaySecondsByTopic.Productive > 0}
+              <div class="barSegment seg-productive" style="flex-grow: {todaySecondsByTopic.Productive}" title={`Productive: ${formatDurationText(todaySecondsByTopic.Productive)}`}></div>
+            {/if}
           {/if}
         </div>
         <div class="barLabels">
           <span class="barLegend studyLegend">Study ({formatDurationText(todaySecondsByTopic.Study)})</span>
           <span class="barLegend gamingLegend">Gaming ({formatDurationText(todaySecondsByTopic.Gaming)})</span>
           <span class="barLegend timepassLegend">Timepass ({formatDurationText(todaySecondsByTopic.Timepass)})</span>
+          <span class="barLegend productiveLegend">Productive ({formatDurationText(todaySecondsByTopic.Productive)})</span>
         </div>
       </div>
     </div>
@@ -452,7 +458,7 @@
 
     <div class="chartCanvas">
       {#each chartData as item}
-        {@const sumSeconds = item.Study + item.Gaming + item.Timepass}
+        {@const sumSeconds = item.Study + item.Gaming + item.Timepass + item.Productive}
         {@const barHeightPct = (sumSeconds / maxSessionSeconds) * 100}
         <div class="chartColumnWrapper">
           <div class="chartColumnBar" style="height: {Math.max(5, barHeightPct)}%">
@@ -465,6 +471,9 @@
               {/if}
               {#if item.Timepass > 0}
                 <div class="chartSegment seg-timepass" style="height: {(item.Timepass / sumSeconds) * 100}%" title={`Timepass: ${formatDurationText(item.Timepass)}`}></div>
+              {/if}
+              {#if item.Productive > 0}
+                <div class="chartSegment seg-productive" style="height: {(item.Productive / sumSeconds) * 100}%" title={`Productive: ${formatDurationText(item.Productive)}`}></div>
               {/if}
             {/if}
           </div>
@@ -496,7 +505,7 @@
                 {new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(session.session_date))}
               </span>
               <span class="ledgerTopic">
-                <span class="topicTag" class:tag-study={session.topic === 'Study'} class:tag-gaming={session.topic === 'Gaming'} class:tag-timepass={session.topic === 'Timepass'}>
+                <span class="topicTag" class:tag-study={session.topic === 'Study'} class:tag-gaming={session.topic === 'Gaming'} class:tag-timepass={session.topic === 'Timepass'} class:tag-productive={session.topic === 'Productive'}>
                   {session.topic}
                 </span>
               </span>
@@ -615,6 +624,11 @@
     background: rgba(231, 76, 60, 0.15);
     color: #e74c3c;
     border: 1px solid rgba(231, 76, 60, 0.3);
+  }
+  .tag-productive {
+    background: rgba(52, 152, 219, 0.15);
+    color: #3498db;
+    border: 1px solid rgba(52, 152, 219, 0.3);
   }
 
   .timerControls {
@@ -746,6 +760,9 @@
   .seg-timepass {
     background: #e74c3c;
   }
+  .seg-productive {
+    background: #3498db;
+  }
 
   .barLabels {
     display: flex;
@@ -776,9 +793,13 @@
   .timepassLegend::before {
     background: #e74c3c;
   }
+  .productiveLegend::before {
+    background: #3498db;
+  }
   .studyLegend { color: #2ecc71; }
   .gamingLegend { color: #e67e22; }
   .timepassLegend { color: #e74c3c; }
+  .productiveLegend { color: #3498db; }
 
   /* Chart Layouts */
   .chartHeader {

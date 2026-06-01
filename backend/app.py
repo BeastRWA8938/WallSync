@@ -397,7 +397,7 @@ def create_focus_session():
     if not topic or not start_time or not end_time or duration_seconds is None:
         return jsonify({"error": "Missing required focus session details"}), 400
 
-    if topic not in ["Study", "Gaming", "Timepass"]:
+    if topic not in ["Study", "Gaming", "Timepass", "Productive"]:
         return jsonify({"error": "Invalid focus session topic"}), 400
 
     session_date = start_time.split("T")[0]
