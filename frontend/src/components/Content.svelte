@@ -3,6 +3,7 @@
   import CalendarView from './CalendarView.svelte'
   import HabitsView from './HabitsView.svelte'
   import TaskView from './TaskView.svelte'
+  import FocusView from './FocusView.svelte'
 
   let { activeTab } = $props()
 </script>
@@ -16,6 +17,9 @@
   </div>
   <div class="widgetWrapper habitsWidget">
     <HabitsView />
+  </div>
+  <div class="widgetWrapper focusWidget">
+    <FocusView />
   </div>
   <div class="widgetWrapper agentWidget">
     <AIView />

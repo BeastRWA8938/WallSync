@@ -7,6 +7,7 @@
     { id: 'tasks', label: 'Tasks' },
     { id: 'calendar', label: 'Calendar' },
     { id: 'habits', label: 'Habits' },
+    { id: 'focus', label: 'Focus' },
     { id: 'agent', label: 'AI Agent' },
   ]
 </script>

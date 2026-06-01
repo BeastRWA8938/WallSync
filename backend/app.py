@@ -64,6 +64,18 @@ def init_database():
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS focus_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                topic TEXT NOT NULL,
+                start_time TEXT NOT NULL,
+                end_time TEXT NOT NULL,
+                duration_seconds INTEGER NOT NULL,
+                session_date TEXT NOT NULL
+            )
+            """
+        )
 
 
 init_database()
@@ -347,6 +359,81 @@ def decrement_habit(habit_id):
 @app.post("/api/agent/chat")
 def agent_chat():
     return jsonify({"reply": "Agent hook is ready. LangChain logic can be wired here later."})
+
+
+@app.get("/api/focus/sessions")
+def list_focus_sessions():
+    with get_db_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT id, topic, start_time, end_time, duration_seconds, session_date
+            FROM focus_sessions
+            ORDER BY id DESC
+            """
+        ).fetchall()
+    
+    sessions = [
+        {
+            "id": row["id"],
+            "topic": row["topic"],
+            "start_time": row["start_time"],
+            "end_time": row["end_time"],
+            "duration_seconds": row["duration_seconds"],
+            "session_date": row["session_date"]
+        }
+        for row in rows
+    ]
+    return jsonify({"sessions": sessions})
+
+
+@app.post("/api/focus/sessions")
+def create_focus_session():
+    payload = request.json or {}
+    topic = payload.get("topic", "").strip()
+    start_time = payload.get("start_time", "").strip()
+    end_time = payload.get("end_time", "").strip()
+    duration_seconds = payload.get("duration_seconds")
+
+    if not topic or not start_time or not end_time or duration_seconds is None:
+        return jsonify({"error": "Missing required focus session details"}), 400
+
+    if topic not in ["Study", "Gaming", "Timepass"]:
+        return jsonify({"error": "Invalid focus session topic"}), 400
+
+    session_date = start_time.split("T")[0]
+
+    with get_db_connection() as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO focus_sessions (topic, start_time, end_time, duration_seconds, session_date)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (topic, start_time, end_time, int(duration_seconds), session_date),
+        )
+        session_id = cursor.lastrowid
+
+    return jsonify({
+        "session": {
+            "id": session_id,
+            "topic": topic,
+            "start_time": start_time,
+            "end_time": end_time,
+            "duration_seconds": duration_seconds,
+            "session_date": session_date
+        }
+    }), 201
+
+
+@app.delete("/api/focus/sessions/<int:session_id>")
+def delete_focus_session(session_id):
+    with get_db_connection() as connection:
+        session = connection.execute("SELECT id FROM focus_sessions WHERE id = ?", (session_id,)).fetchone()
+        if not session:
+            return jsonify({"error": "Focus session not found"}), 404
+        
+        connection.execute("DELETE FROM focus_sessions WHERE id = ?", (session_id,))
+    
+    return jsonify({"success": True})
 
 
 @app.route("/", defaults={"path": ""})

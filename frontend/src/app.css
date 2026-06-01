@@ -185,6 +185,7 @@ button:disabled {
 .active-tab-tasks .tasksWidget,
 .active-tab-calendar .calendarWidget,
 .active-tab-habits .habitsWidget,
+.active-tab-focus .focusWidget,
 .active-tab-agent .agentWidget {
   display: block;
 }

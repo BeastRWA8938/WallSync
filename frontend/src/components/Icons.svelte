@@ -49,5 +49,11 @@
   {:else if name === 'check'}
     <!-- Simple checkmark -->
     <polyline points="20 6 9 17 4 12" />
+  {:else if name === 'focus'}
+    <!-- Sleek Hourglass -->
+    <path d="M5 2h14" />
+    <path d="M5 22h14" />
+    <path d="M19 2v4c0 3.3-2.7 6-6 6s-6-2.7-6-6V2" />
+    <path d="M5 22v-4c0-3.3 2.7-6 6-6s6 2.7 6 6v4" />
   {/if}
 </svg>
