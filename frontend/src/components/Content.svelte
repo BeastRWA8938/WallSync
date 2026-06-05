@@ -19,7 +19,7 @@
     <HabitsView />
   </div>
   <div class="widgetWrapper focusWidget">
-    <FocusView />
+    <FocusView isActive={activeTab === 'focus'} />
   </div>
   <div class="widgetWrapper agentWidget">
     <AIView />

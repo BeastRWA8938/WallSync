@@ -4,8 +4,16 @@
 
   const API_BASE = import.meta.env.DEV ? 'http://127.0.0.1:5000' : ''
 
+  let { isActive = false } = $props()
+
   // Timer states
   let timerState = $state('idle') // 'idle', 'running', 'paused'
+
+  $effect(() => {
+    if (isActive) {
+      syncElapsed()
+    }
+  })
   let elapsedTime = $state(0)
   let activeTopic = $state('Study') // 'Study', 'Gaming', 'Timepass'
   let startTime = $state('')
@@ -78,11 +86,20 @@
     }
   }
 
+  // Synchronize elapsed seconds with system clock
+  function syncElapsed() {
+    if (timerState === 'running' && startTime) {
+      elapsedTime = Math.max(0, Math.floor((Date.now() - new Date(startTime).getTime()) / 1000))
+      localStorage.setItem('wallsync_timer_elapsed', String(elapsedTime))
+    }
+  }
+
   // Timer Tick Trigger
   function tick() {
-    elapsedTime++
     if (timerState === 'running') {
-      localStorage.setItem('wallsync_timer_elapsed', String(elapsedTime))
+      syncElapsed()
+    } else {
+      elapsedTime++
     }
   }
 
@@ -215,10 +232,16 @@
         timerState = 'paused'
       }
     }
+
+    // Listen for tab focus/visibility change to recalibrate elapsed timer
+    window.addEventListener('focus', syncElapsed)
+    document.addEventListener('visibilitychange', syncElapsed)
   })
 
   onDestroy(() => {
     if (intervalId) clearInterval(intervalId)
+    window.removeEventListener('focus', syncElapsed)
+    document.removeEventListener('visibilitychange', syncElapsed)
   })
 
   // Reactive dashboard metrics
