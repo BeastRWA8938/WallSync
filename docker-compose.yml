@@ -1,0 +1,12 @@
+services:
+  wallsync:
+    build: .
+    image: wallsync:latest
+    container_name: wallsync
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    volumes:
+      - ./backend/data:/app/backend/data
+    env_file:
+      - .env

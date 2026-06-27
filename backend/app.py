@@ -15,7 +15,12 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
 FRONTEND_DIST = PROJECT_DIR / "frontend" / "dist"
-TOKEN_CACHE_PATH = BASE_DIR / "token_cache.bin"
+
+# Relocate token cache to support Docker directory-based volume mounting
+DATA_DIR = BASE_DIR / "data"
+DATA_DIR.mkdir(exist_ok=True)
+TOKEN_CACHE_PATH = DATA_DIR / "token_cache.bin"
+
 DATABASE_PATH = BASE_DIR / "wallsync.db"
 
 GOOGLE_ICS_URL = os.getenv("GOOGLE_ICS_URL")
@@ -34,28 +39,80 @@ if TOKEN_CACHE_PATH.exists():
 
 msal_app = msal.PublicClientApplication(CLIENT_ID, authority=AUTHORITY, token_cache=cache) if CLIENT_ID else None
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+HAS_POSTGRES_LIB = False
+try:
+    import psycopg2
+    from psycopg2.extras import DictCursor
+    HAS_POSTGRES_LIB = True
+except ImportError:
+    pass
+
+IS_POSTGRES = bool(DATABASE_URL and HAS_POSTGRES_LIB)
+
+
+class DBConnectionWrapper:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.conn.rollback()
+        else:
+            self.conn.commit()
+        self.conn.close()
+
+    def execute(self, query, params=()):
+        if IS_POSTGRES:
+            query = query.replace("?", "%s")
+            cursor = self.conn.cursor(cursor_factory=DictCursor)
+        else:
+            cursor = self.conn.cursor()
+        
+        cursor.execute(query, params)
+        return cursor
+
 
 def get_db_connection():
-    connection = sqlite3.connect(DATABASE_PATH)
-    connection.row_factory = sqlite3.Row
-    return connection
+    if IS_POSTGRES:
+        conn = psycopg2.connect(DATABASE_URL)
+    else:
+        conn = sqlite3.connect(DATABASE_PATH)
+        conn.row_factory = sqlite3.Row
+    return DBConnectionWrapper(conn)
+
+
+def db_insert(connection, query, params=(), id_column="id"):
+    if IS_POSTGRES:
+        query_with_returning = f"{query} RETURNING {id_column}"
+        cursor = connection.execute(query_with_returning, params)
+        return cursor.fetchone()[0]
+    else:
+        cursor = connection.execute(query, params)
+        return cursor.lastrowid
 
 
 def init_database():
     with get_db_connection() as connection:
+        id_type = "SERIAL PRIMARY KEY" if IS_POSTGRES else "INTEGER PRIMARY KEY"
+        focus_id_type = "SERIAL PRIMARY KEY" if IS_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
+
         connection.execute(
-            """
+            f"""
             CREATE TABLE IF NOT EXISTS habits (
-                id INTEGER PRIMARY KEY,
+                id {id_type},
                 name TEXT NOT NULL,
                 ms_task_id TEXT NULL
             )
             """
         )
         connection.execute(
-            """
+            f"""
             CREATE TABLE IF NOT EXISTS completions (
-                id INTEGER PRIMARY KEY,
+                id {id_type},
                 habit_id INTEGER NOT NULL,
                 completed_date TEXT NOT NULL,
                 count INTEGER NOT NULL DEFAULT 1,
@@ -65,9 +122,9 @@ def init_database():
             """
         )
         connection.execute(
-            """
+            f"""
             CREATE TABLE IF NOT EXISTS focus_sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {focus_id_type},
                 topic TEXT NOT NULL,
                 start_time TEXT NOT NULL,
                 end_time TEXT NOT NULL,
@@ -228,7 +285,7 @@ def list_tasks():
         # Log into processed ledger
         with get_db_connection() as connection:
             connection.execute(
-                "INSERT OR IGNORE INTO processed_tasks (task_id, completed_at) VALUES (?, ?)",
+                "INSERT INTO processed_tasks (task_id, completed_at) VALUES (?, ?) ON CONFLICT (task_id) DO NOTHING",
                 (task_id, current_utc_time),
             )
 
@@ -330,7 +387,7 @@ def complete_task(list_id, task_id):
             current_utc_time = datetime.utcnow().isoformat() + "Z"
             with get_db_connection() as connection:
                 connection.execute(
-                    "INSERT OR IGNORE INTO processed_tasks (task_id, completed_at) VALUES (?, ?)",
+                    "INSERT INTO processed_tasks (task_id, completed_at) VALUES (?, ?) ON CONFLICT (task_id) DO NOTHING",
                     (task_id, current_utc_time),
                 )
 
@@ -423,14 +480,14 @@ def create_habit():
         return jsonify({"error": "Habit name is required"}), 400
 
     with get_db_connection() as connection:
-        cursor = connection.execute(
+        habit_id = db_insert(
+            connection,
             """
             INSERT INTO habits (name, ms_task_id)
             VALUES (?, ?)
             """,
             (name, ms_task_id),
         )
-        habit_id = cursor.lastrowid
 
     return jsonify({"habit": {"id": habit_id, "name": name, "ms_task_id": ms_task_id, "completions": []}}), 201
 
@@ -564,7 +621,8 @@ def create_focus_session():
             duration = int((next_midnight - current_start).total_seconds())
             
             s_date = current_start.date().isoformat()
-            cursor = connection.execute(
+            session_id = db_insert(
+                connection,
                 """
                 INSERT INTO focus_sessions (topic, start_time, end_time, duration_seconds, session_date)
                 VALUES (?, ?, ?, ?, ?)
@@ -572,7 +630,7 @@ def create_focus_session():
                 (topic, current_start.isoformat(), next_midnight.isoformat(), duration, s_date),
             )
             inserted_sessions.append({
-                "id": cursor.lastrowid,
+                "id": session_id,
                 "topic": topic,
                 "start_time": current_start.isoformat(),
                 "end_time": next_midnight.isoformat(),
@@ -585,7 +643,8 @@ def create_focus_session():
         duration = int((end_dt - current_start).total_seconds())
         if duration > 0:
             s_date = current_start.date().isoformat()
-            cursor = connection.execute(
+            session_id = db_insert(
+                connection,
                 """
                 INSERT INTO focus_sessions (topic, start_time, end_time, duration_seconds, session_date)
                 VALUES (?, ?, ?, ?, ?)
@@ -593,7 +652,7 @@ def create_focus_session():
                 (topic, current_start.isoformat(), end_dt.isoformat(), duration, s_date),
             )
             inserted_sessions.append({
-                "id": cursor.lastrowid,
+                "id": session_id,
                 "topic": topic,
                 "start_time": current_start.isoformat(),
                 "end_time": end_dt.isoformat(),
