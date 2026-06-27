@@ -40,6 +40,23 @@
     return `${year}-${month}-${date}`
   }
 
+  function getLocalISOString(date = new Date()) {
+    const pad = (num) => String(num).padStart(2, '0')
+    const year = date.getFullYear()
+    const month = pad(date.getMonth() + 1)
+    const day = pad(date.getDate())
+    const hours = pad(date.getHours())
+    const minutes = pad(date.getMinutes())
+    const seconds = pad(date.getSeconds())
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`
+  }
+
+  function parseLocalDate(dateStr) {
+    if (!dateStr) return new Date()
+    const [y, m, d] = dateStr.split('-').map(Number)
+    return new Date(y, m - 1, d)
+  }
+
   // Format seconds to HH:MM:SS
   function formatTime(totalSeconds) {
     const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0')
@@ -107,7 +124,7 @@
     if (timerState === 'running') return
 
     timerState = 'running'
-    startTime = new Date().toISOString()
+    startTime = getLocalISOString()
     elapsedTime = 0
 
     // Store state in localStorage for persistent background tick
@@ -135,7 +152,7 @@
     
     // Readjust start time based on elapsed seconds so refresh recalculates correctly
     const newStart = new Date(Date.now() - elapsedTime * 1000)
-    startTime = newStart.toISOString()
+    startTime = getLocalISOString(newStart)
 
     localStorage.setItem('wallsync_timer_state', 'running')
     localStorage.setItem('wallsync_timer_start', startTime)
@@ -147,7 +164,7 @@
     if (timerState === 'idle') return
 
     clearInterval(intervalId)
-    const endTime = new Date().toISOString()
+    const endTime = getLocalISOString()
     const sessionDuration = elapsedTime
 
     isSaving = true
@@ -164,7 +181,11 @@
         }),
       })
 
-      sessions = [payload.session, ...sessions]
+      if (payload.sessions) {
+        sessions = [...payload.sessions, ...sessions]
+      } else if (payload.session) {
+        sessions = [payload.session, ...sessions]
+      }
       resetTimerState()
     } catch (err) {
       error = err.message
@@ -342,7 +363,7 @@
       const label = `${new Intl.DateTimeFormat('en-IN', { month: 'short', day: '2-digit' }).format(startDay)} - ${new Intl.DateTimeFormat('en-IN', { day: '2-digit' }).format(endDay)}`
       
       const weekSessions = sessions.filter((s) => {
-        const sDate = new Date(s.session_date)
+        const sDate = parseLocalDate(s.session_date)
         return sDate >= startDay && sDate <= endDay
       })
 
@@ -525,7 +546,7 @@
           {#each sessions as session (session.id)}
             <div class="ledgerRow">
               <span class="ledgerDate">
-                {new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(session.session_date))}
+                {new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).format(parseLocalDate(session.session_date))}
               </span>
               <span class="ledgerTopic">
                 <span class="topicTag" class:tag-study={session.topic === 'Study'} class:tag-gaming={session.topic === 'Gaming'} class:tag-timepass={session.topic === 'Timepass'} class:tag-productive={session.topic === 'Productive'}>

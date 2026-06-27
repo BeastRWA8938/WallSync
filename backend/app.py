@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import msal
@@ -191,12 +191,12 @@ def list_tasks():
         title = c_task.get("title", "")
         completed_time_str = c_task.get("completedDateTime", {}).get("dateTime")
         
-        # Extract chronological exact date adjusted for Indian Standard Time (+5:30)
+        # Extract chronological exact date adjusted for system local timezone
         if completed_time_str:
             base_str = completed_time_str.split(".")[0].replace("Z", "")
             try:
-                utc_dt = datetime.fromisoformat(base_str)
-                local_dt = utc_dt + timedelta(hours=5, minutes=30)
+                utc_dt = datetime.fromisoformat(base_str).replace(tzinfo=timezone.utc)
+                local_dt = utc_dt.astimezone()
                 completed_date_str = local_dt.strftime("%Y-%m-%d")
             except ValueError:
                 completed_date_str = completed_time_str.split("T")[0]
@@ -553,28 +553,55 @@ def create_focus_session():
     if topic not in ["Study", "Gaming", "Timepass", "Productive"]:
         return jsonify({"error": "Invalid focus session topic"}), 400
 
-    session_date = start_time.split("T")[0]
+    inserted_sessions = []
+    start_dt = datetime.fromisoformat(start_time)
+    end_dt = datetime.fromisoformat(end_time)
 
+    current_start = start_dt
     with get_db_connection() as connection:
-        cursor = connection.execute(
-            """
-            INSERT INTO focus_sessions (topic, start_time, end_time, duration_seconds, session_date)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (topic, start_time, end_time, int(duration_seconds), session_date),
-        )
-        session_id = cursor.lastrowid
+        while current_start.date() < end_dt.date():
+            next_midnight = datetime(current_start.year, current_start.month, current_start.day) + timedelta(days=1)
+            duration = int((next_midnight - current_start).total_seconds())
+            
+            s_date = current_start.date().isoformat()
+            cursor = connection.execute(
+                """
+                INSERT INTO focus_sessions (topic, start_time, end_time, duration_seconds, session_date)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (topic, current_start.isoformat(), next_midnight.isoformat(), duration, s_date),
+            )
+            inserted_sessions.append({
+                "id": cursor.lastrowid,
+                "topic": topic,
+                "start_time": current_start.isoformat(),
+                "end_time": next_midnight.isoformat(),
+                "duration_seconds": duration,
+                "session_date": s_date
+            })
+            current_start = next_midnight
 
-    return jsonify({
-        "session": {
-            "id": session_id,
-            "topic": topic,
-            "start_time": start_time,
-            "end_time": end_time,
-            "duration_seconds": duration_seconds,
-            "session_date": session_date
-        }
-    }), 201
+        # final remainder segment
+        duration = int((end_dt - current_start).total_seconds())
+        if duration > 0:
+            s_date = current_start.date().isoformat()
+            cursor = connection.execute(
+                """
+                INSERT INTO focus_sessions (topic, start_time, end_time, duration_seconds, session_date)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (topic, current_start.isoformat(), end_dt.isoformat(), duration, s_date),
+            )
+            inserted_sessions.append({
+                "id": cursor.lastrowid,
+                "topic": topic,
+                "start_time": current_start.isoformat(),
+                "end_time": end_dt.isoformat(),
+                "duration_seconds": duration,
+                "session_date": s_date
+            })
+
+    return jsonify({"sessions": inserted_sessions}), 201
 
 
 @app.delete("/api/focus/sessions/<int:session_id>")
