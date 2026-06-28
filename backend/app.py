@@ -2,6 +2,7 @@ import os
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+import threading
 
 import msal
 import requests
@@ -673,6 +674,40 @@ def delete_focus_session(session_id):
         connection.execute("DELETE FROM focus_sessions WHERE id = ?", (session_id,))
     
     return jsonify({"success": True})
+
+
+def wait_for_device_login(flow):
+    try:
+        result = msal_app.acquire_token_by_device_flow(flow)
+        if "access_token" in result:
+            persist_token_cache()
+    except Exception:
+        pass
+
+
+@app.post("/api/auth/device-flow")
+def initiate_device_flow():
+    if not msal_app:
+        return jsonify({"error": "Microsoft client application is not configured. Check your CLIENT_ID."}), 400
+
+    try:
+        flow = msal_app.initiate_device_flow(scopes=SCOPES)
+        if "user_code" not in flow:
+            return jsonify({"error": "Failed to initiate device flow from Microsoft"}), 502
+
+        # Start a background polling thread
+        thread = threading.Thread(target=wait_for_device_login, args=(flow,))
+        thread.daemon = True
+        thread.start()
+
+        return jsonify({
+            "user_code": flow["user_code"],
+            "verification_uri": flow["verification_uri"],
+            "message": flow["message"],
+            "expires_in": flow.get("expires_in", 900)
+        })
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @app.route("/", defaults={"path": ""})

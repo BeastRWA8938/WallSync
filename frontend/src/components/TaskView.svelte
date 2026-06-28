@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import Icons from './Icons.svelte'
 
   const API_BASE = import.meta.env.DEV ? 'http://127.0.0.1:5000' : ''
@@ -98,6 +98,47 @@
   }
 
   onMount(loadTasks)
+
+  let deviceFlowData = $state(null)
+  let isRequestingFlow = $state(false)
+  let authPollIntervalId = null
+
+  async function initiateDeviceFlow() {
+    isRequestingFlow = true
+    error = ''
+    try {
+      const payload = await request('/api/auth/device-flow', { method: 'POST' })
+      deviceFlowData = payload
+      
+      // Start polling for successful tasks load (which means authenticated)
+      if (authPollIntervalId) clearInterval(authPollIntervalId)
+      authPollIntervalId = setInterval(async () => {
+        try {
+          const res = await fetch(`${API_BASE}/api/tasks`)
+          if (res.ok) {
+            const payloadTasks = await res.json()
+            if (!payloadTasks.needsAuth) {
+              clearInterval(authPollIntervalId)
+              authPollIntervalId = null
+              needsAuth = false
+              tasks = payloadTasks.tasks ?? []
+              deviceFlowData = null
+            }
+          }
+        } catch (err) {
+          // ignore transient errors while polling
+        }
+      }, 5000)
+    } catch (err) {
+      error = err.message
+    } finally {
+      isRequestingFlow = false
+    }
+  }
+
+  onDestroy(() => {
+    if (authPollIntervalId) clearInterval(authPollIntervalId)
+  })
 </script>
 
 <section class="panel scrollPanel tasksPanel">
@@ -121,21 +162,25 @@
         <Icons name="lock" size={32} />
       </div>
       <h3>Microsoft Graph Authentication Required</h3>
-      <p>WallSync synchronizes with your personal Microsoft To Do lists. You need to perform a one-time secure browser authentication to grant the required permissions.</p>
-      <div class="authInstructions">
-        <strong>Setup Guide:</strong>
-        <ol>
-          <li>Open your terminal in the workspace root.</li>
-          <li>Run the login script:
-            <code>cd backend; ..\venv\Scripts\python.exe auth_setup.py</code>
-          </li>
-          <li>Log in via the secure browser window that opens.</li>
-          <li>Restart your Flask server and refresh this page.</li>
-        </ol>
-      </div>
-      <button class="retryButton" type="button" onclick={loadTasks}>
-        <Icons name="agent" size={16} /> Check Authentication Status
-      </button>
+      <p>WallSync synchronizes with your personal Microsoft To Do lists. You need to perform a one-time secure authentication to grant the required permissions.</p>
+      
+      {#if deviceFlowData}
+        <div class="deviceFlowInstructions">
+          <p>Please open the link below on any device and enter the code:</p>
+          <div class="codeDisplay">{deviceFlowData.user_code}</div>
+          <a href={deviceFlowData.verification_uri} target="_blank" rel="noopener noreferrer" class="flowLink">
+            {deviceFlowData.verification_uri} ↗
+          </a>
+          <div class="waitingStatus">
+            <span class="pulseDot"></span> Waiting for you to complete login...
+          </div>
+        </div>
+      {:else}
+        <button class="retryButton" type="button" onclick={initiateDeviceFlow} disabled={isRequestingFlow}>
+          <Icons name="agent" size={16} class={isRequestingFlow ? 'spinning' : ''} />
+          {isRequestingFlow ? 'Generating Code...' : 'Authenticate Account'}
+        </button>
+      {/if}
     </div>
   {:else}
     <form class="inlineForm" onsubmit={(event) => { event.preventDefault(); addTask() }}>
@@ -350,5 +395,74 @@
     font-size: 0.76rem;
     color: #e67e22;
     margin-top: 4px;
+  }
+
+  .deviceFlowInstructions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    background: #080b10;
+    border: 1px solid #1c232e;
+    border-radius: 6px;
+    padding: 20px;
+    width: 100%;
+    max-width: 480px;
+    margin-top: 10px;
+  }
+
+  .deviceFlowInstructions p {
+    font-size: 0.9rem;
+    color: #aeb9c8;
+    text-align: center;
+    margin: 0;
+  }
+
+  .codeDisplay {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #4a8dd8;
+    background: #101722;
+    border: 1px dashed #242c38;
+    padding: 10px 24px;
+    border-radius: 6px;
+    letter-spacing: 2px;
+    font-family: monospace;
+  }
+
+  .flowLink {
+    color: #8fb9ff;
+    text-decoration: underline;
+    font-size: 0.95rem;
+    transition: color 0.2s;
+    overflow-wrap: anywhere;
+  }
+
+  .flowLink:hover {
+    color: #ffffff;
+  }
+
+  .waitingStatus {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #8b98aa;
+    margin-top: 6px;
+  }
+
+  .pulseDot {
+    width: 8px;
+    height: 8px;
+    background-color: #2ecc71;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 1.5s infinite ease-in-out;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(0.8); opacity: 0.5; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0.8); opacity: 0.5; }
   }
 </style>
