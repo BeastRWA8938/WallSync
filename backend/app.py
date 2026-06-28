@@ -278,7 +278,7 @@ def list_tasks():
                         INSERT INTO completions (habit_id, completed_date, count)
                         VALUES (?, ?, 1)
                         ON CONFLICT(habit_id, completed_date)
-                        DO UPDATE SET count = count + 1
+                        DO UPDATE SET count = completions.count + 1
                         """,
                         (h_id, completed_date_str),
                     )
@@ -379,7 +379,7 @@ def complete_task(list_id, task_id):
                             INSERT INTO completions (habit_id, completed_date, count)
                             VALUES (?, ?, 1)
                             ON CONFLICT(habit_id, completed_date)
-                            DO UPDATE SET count = count + 1
+                            DO UPDATE SET count = completions.count + 1
                             """,
                             (h_id, completed_date_str),
                         )
@@ -507,7 +507,7 @@ def increment_habit(habit_id):
             INSERT INTO completions (habit_id, completed_date, count)
             VALUES (?, ?, 1)
             ON CONFLICT(habit_id, completed_date)
-            DO UPDATE SET count = count + 1
+            DO UPDATE SET count = completions.count + 1
             """,
             (habit_id, today),
         )
