@@ -20,7 +20,8 @@
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}))
-      throw new Error(payload.error ?? 'Task operation failed')
+      const errMsg = payload.details ? `${payload.error}: ${payload.details}` : (payload.error ?? 'Task operation failed')
+      throw new Error(errMsg)
     }
 
     return response.json()

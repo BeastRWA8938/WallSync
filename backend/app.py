@@ -693,7 +693,11 @@ def initiate_device_flow():
     try:
         flow = msal_app.initiate_device_flow(scopes=SCOPES)
         if "user_code" not in flow:
-            return jsonify({"error": "Failed to initiate device flow from Microsoft"}), 502
+            print(f"MSAL Device Flow Error details: {flow}", flush=True)
+            return jsonify({
+                "error": "Failed to initiate device flow from Microsoft",
+                "details": flow.get("error_description") or flow.get("error") or str(flow)
+            }), 502
 
         # Start a background polling thread
         thread = threading.Thread(target=wait_for_device_login, args=(flow,))
